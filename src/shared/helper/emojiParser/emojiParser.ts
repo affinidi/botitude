@@ -25,13 +25,20 @@ const filterCorruptEmojis = (arr: string[]) => {
 }
 
 export const slackToUnicode = (text: string): string => {
-  let new_text = text
+  // Limit the text size
+  let new_text = text.slice(0, 10000)
 
   let potentialEmoji = []
   for (let i = 0, startIndex = null, endIndex = null; i < new_text.length; i++) {
     const isColon = new_text[Number(i)] === ':'
     if (isColon && startIndex === null) startIndex = i;
     else if (isColon) endIndex = i
+
+    // Limit the emoji name size
+    if (i - startIndex > 250) {
+      startIndex = null
+    }
+
     if (startIndex !== null && endIndex !== null) {
       potentialEmoji.push(new_text.slice(startIndex + 1, endIndex))
       startIndex = endIndex
@@ -44,6 +51,5 @@ export const slackToUnicode = (text: string): string => {
   new_text = convertToEmoji(new_text, realEmojis)
 
   new_text = new_text.replace(/(:\w+:)/g, '')
-  console.log(new_text)
   return new_text
 }
