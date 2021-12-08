@@ -1,0 +1,66 @@
+service: serverless-bolt-js
+useDotenv: true
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+  warmup:
+    officeHoursWarmer:
+      enabled: true
+      events:
+        - schedule: cron(0/5 8-17 ? * MON-FRI *)
+      concurrency: 10
+    outOfOfficeHoursWarmer:
+      enabled: true
+      events:
+        - schedule: cron(0/5 0-7 ? * MON-FRI *)
+        - schedule: cron(0/5 18-23 ? * MON-FRI *)
+        - schedule: cron(0/5 * ? * SAT-SUN *)
+      concurrency: 1
+    testWarmer:
+      enabled: false
+frameworkVersion: '2'
+provider:
+  name: aws
+  runtime: nodejs14.x
+  environment:
+    SLACK_SIGNING_SECRET: ${env:SLACKBOT_SIGNING_TOKEN}
+    SLACK_BOT_TOKEN: ${env:SLACKBOT_TOKEN}
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Resource: '*'
+      Action:
+        - 'sns:*'
+        - 'lambda:InvokeFunction'
+functions:
+  slackRedirectURI:
+    handler: src/listener.oauthHandler
+    timeout: 10
+    events:
+      - http:
+          path: slack/oauth_redirect
+          method: get
+      - http:
+          path: slack/install
+          method: get
+
+  slack:
+    handler: src/listener.handler
+    memorySize: 1028
+    timeout: 10
+    events:
+      - http:
+          path: slack/events
+          method: post
+    # warmup: true
+
+  issueVC:
+    handler: src/listener.issueVC
+    timeout: 30
+    events:
+      - sns: issueVC
+
+plugins:
+  - serverless-webpack
+  - serverless-dotenv-plugin
+  - serverless-plugin-warmup
